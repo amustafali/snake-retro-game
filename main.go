@@ -9,7 +9,11 @@ import (
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/opentype"
 )
 
 type Swallow struct {
@@ -17,8 +21,10 @@ type Swallow struct {
 }
 
 const (
-	xSize = 32
-	ySize = 24
+	xSize        = 32
+	ySize        = 24
+	screenWidth  = 640
+	screenHeight = 480
 )
 
 var (
@@ -157,6 +163,7 @@ func (l *SnakeList) gameOver() {
 	gameOver = true
 	fmt.Println("Game Over!")
 }
+
 func (l *SnakeList) changeDir(direction string) {
 	if l.dir == "up" && direction == "down" {
 		return
@@ -269,25 +276,21 @@ func (l *SnakeList) eatNGrow() {
 	mysleepMillis = max(20, mysleepMillis-1)
 }
 
-// Game implements ebiten.Game interface.
 type Game struct{}
 
-// Update proceeds the game state.
-// Update is called every tick (1/60 [s] by default).
 func (g *Game) Update() error {
-	if mySnake.head.x == mySnake.xFood && mySnake.head.y == mySnake.yFood {
-		mySnake.eatNGrow()
-		myFood.addNewFood(mySnake.xFood, mySnake.yFood)
-		mySnake.generateFood()
-	}
 	if !gameOver {
+		if mySnake.head.x == mySnake.xFood && mySnake.head.y == mySnake.yFood {
+			mySnake.eatNGrow()
+			myFood.addNewFood(mySnake.xFood, mySnake.yFood)
+			mySnake.generateFood()
+		}
+
 		mySnake.nextStep()
 	}
 	return nil
 }
 
-// Draw draws the game screen.
-// Draw is called every frame (typically 1/60[s] for 60Hz display).
 func (g *Game) Draw(screen *ebiten.Image) {
 	time.Sleep(time.Duration(mysleepMillis) * time.Millisecond)
 	screen.Fill(bkg)
@@ -307,19 +310,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// swallow := myFood.newest
-	// for swallow != nil {
-	// 	if snakeMatrix[swallow.x][swallow.y] {
-	// op := &ebiten.DrawImageOptions{}
-	// op.GeoM.Translate(float64(swallow.x)*10-3, float64(swallow.y)*10-3)
-	// screen.DrawImage(swallowTile, op)
-	// 	} else {
-	// 		myFood.removeOldFood()
-	// 		break
-	// 	}
-	// 	swallow = myFood.next(swallow)
-	// }
-
 	swallow := myFood.oldest
 	if swallow != nil && !snakeMatrix[swallow.x][swallow.y] {
 		myFood.removeOldFood()
@@ -335,19 +325,40 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(float64(mySnake.xFood)*10+1, float64(mySnake.yFood)*10+1)
 	screen.DrawImage(foodTile, op)
-
+	if gameOver {
+		writeTextOverScreen("GAME OVER!", screen)
+	}
 }
 
-// Layout takes the outside size (e.g., the window size) and returns the (logical) screen size.
-// If you don't have to adjust the screen size with the outside size, just return a fixed size.
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return 320, 240
+}
+
+func writeTextOverScreen(msg string, screen *ebiten.Image) {
+	tt, err := opentype.Parse(fonts.PressStart2P_ttf)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	textImage := ebiten.NewImage(screenWidth, screenHeight)
+	arcadeFont, err := opentype.NewFace(tt, &opentype.FaceOptions{
+		Size:    screenHeight / 24,
+		DPI:     72,
+		Hinting: font.HintingFull,
+	})
+
+	text.Draw(textImage, msg, arcadeFont, screenWidth/10, screenHeight/4, color.White)
+	if err != nil {
+		log.Fatal(err)
+	}
+	screen.DrawImage(textImage, nil)
+
 }
 
 func main() {
 	game := &Game{}
 	mySnake.init(15, 15)
-	ebiten.SetWindowSize(640, 480)
+	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Snake")
 	go func() {
 		for {
