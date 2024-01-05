@@ -28,6 +28,7 @@ const (
 )
 
 var (
+	prevDrawTime  = time.Now().UnixNano()
 	gameOver      = false
 	bkg           = color.Black
 	lightgrey     = color.RGBA{0x52, 0x55, 0x56, 0xff}
@@ -292,7 +293,8 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	time.Sleep(time.Duration(mysleepMillis) * time.Millisecond)
+	currentDrawTime := time.Now().UnixNano()
+	time.Sleep(time.Duration(prevDrawTime) + time.Duration(mysleepMillis)*time.Millisecond - time.Duration(currentDrawTime))
 	screen.Fill(bkg)
 	for i := 0; i < 32; i++ {
 		for j := 0; j < 24; j++ {
@@ -328,6 +330,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if gameOver {
 		writeTextOverScreen("GAME OVER!", screen)
 	}
+	prevDrawTime = time.Now().UnixNano()
+
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
